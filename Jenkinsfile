@@ -22,7 +22,7 @@ pipeline {
 
     stage('Deliver') {
       steps{
-        deploy adapters: [tomcat10(credentialsId: 'tomcat', path: '', url: 'http://172.31.91.20:9090/')], contextPath: null, war: 'target/calculator.war'
+        deploy adapters: [tomcat10(credentialsId: 'tomcat', path: '', url: 'http://localhost:8081/')], contextPath: '/calculator', war: 'target/calculator.war'
       }
     }
   }
