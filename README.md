@@ -1,147 +1,86 @@
-📘 CI/CD Pipeline Deployment to Tomcat – Issue & Fix Documentation
-This document explains the step-by-step setup and troubleshooting performed to deploy a Maven .war application from Jenkins to Apache Tomcat 10 using a Jenkins Pipeline.
-
-🎯 Objective
-
-Automate the following flow:
-Source Code → Maven Build → WAR Package → Deploy to Tomcat 10
-
-🧱 Initial Setup (From Scratch)
-1️⃣ Installed Java 21
-Tomcat 10 requires Java 11+.
-
-Verified installation:
+✅ 1️⃣ Install Java (if not installed)
+sudo apt update
+sudo apt install openjdk-21-jdk -y
 java -version
 
-Confirmed:
-OpenJDK 21
+✅ 2️⃣ Download Tomcat
+wget https://archive.apache.org/dist/tomcat/tomcat-9/v9.0.86/bin/apache-tomcat-9.0.86.tar.gz
 
-2️⃣ Installed Apache Tomcat 10
-Extracted Tomcat under:
-/opt/tomcat
+✅ 3️⃣ Extract Tomcat
+tar -xvzf apache-tomcat-9.0.86.tar.gz
 
-Changed default port from 8080 → 8081
-(to avoid conflict with Jenkins)
+✅ 4️⃣ Move to /opt
+sudo mv apache-tomcat-9.0.86 /opt/tomcat
 
-Edited:
-/opt/tomcat/conf/server.xml
+✅ 5️⃣ Give Execute Permission
+sudo chmod +x /opt/tomcat/bin/*.sh
 
-Changed:
+✅ 6️⃣ Start Tomcat (Default 8080)
+sudo /opt/tomcat/bin/startup.sh
+
+Check running:
+
+ps -ef | grep tomcat
+✅ 7️⃣ Change Port (8080 → 8081)
+
+Because Jenkins was using 8080.
+
+Edit:
+sudo nano /opt/tomcat/conf/server.xml
+
+Find:
 <Connector port="8080"
 
-To:
+Change to:
 <Connector port="8081"
 
-3️⃣ Started Tomcat
-/opt/tomcat/bin/startup.sh
+Save and restart:
+sudo /opt/tomcat/bin/shutdown.sh
+sudo /opt/tomcat/bin/startup.sh
 
-Verified in browser:
-http://<server-ip>:8081
-Tomcat home page loaded successfully.
+Access:
+http://<EC2-IP>:8081
+✅ 8️⃣ Add Tomcat Username & Password
 
-4️⃣ Configured Tomcat Manager Access
+Edit:
+sudo nano /opt/tomcat/conf/tomcat-users.xml
 
-Edited:
-/opt/tomcat/conf/tomcat-users.xml
-
-Added:
+Add before </tomcat-users>:
 <role rolename="manager-script"/>
 <role rolename="manager-gui"/>
-<user username="admin" password="admin123" roles="manager-script,manager-gui"/>
+<user username="tomcat" password="tomcat"
+      roles="manager-script,manager-gui"/>
 
-Restarted Tomcat.
-This allows Jenkins to deploy WAR files using manager API.
+Restart Tomcat again:
+sudo /opt/tomcat/bin/shutdown.sh
+sudo /opt/tomcat/bin/startup.sh
 
-5️⃣ Installed Required Jenkins Plugin
+✅ 9️⃣ Fix 403 Access Denied (Allow Remote Access)
 
-Installed:
-Deploy to Container Plugin
+Edit:
+sudo nano /opt/tomcat/webapps/manager/META-INF/context.xml
 
-Path:
-Manage Jenkins → Manage Plugins
+Comment this block:
+<!--
+<Valve className="org.apache.catalina.valves.RemoteAddrValve"
+       allow="127\.\d+\.\d+\.\d+|::1" />
+-->
 
-6️⃣ Added Credentials in Jenkins
+Restart Tomcat:
+sudo /opt/tomcat/bin/shutdown.sh
+sudo /opt/tomcat/bin/startup.sh
 
-Path:
-Manage Jenkins → Credentials → Global → Add Credentials
+Now Manager works:
+http://<EC2-IP>:8081/manager/html
 
-Added:
-Username: tomcat
-Password: tomcat
-ID: tomcat
+✅ 🔟 Deploy WAR Manually
 
-❌ Error Faced During Pipeline Execution
+Build project:
+cd ~/calculator
+mvn clean package
 
-Build failed with error:
+Copy WAR:
+sudo cp target/calculator.war /opt/tomcat/webapps/
 
-No such DSL method 'tomcat10'
-🔎 Root Cause
-The Jenkins Deploy Plugin does NOT support:
-tomcat10()
-
-Supported adapters available were:
-tomcat4
-tomcat5
-tomcat6
-tomcat7
-tomcat8
-tomcat9
-
-Even though Tomcat 10 was installed, the plugin still expects tomcat9().
-
-✅ Fix Implemented
-Replaced:
-deploy adapters: [tomcat10(
-With:
-deploy adapters: [tomcat9(
-
-This works because the underlying deployment API is compatible.
-
-🛠️ Final Working Jenkinsfile
-pipeline {
-  agent any
-
-  stages {
-
-    stage('Compile') {
-      steps {
-        sh 'mvn clean compile'
-      }
-    }
-
-    stage('UnitTest') {
-      steps {
-        sh 'mvn clean test'
-      }
-    }
-
-    stage('Package') {
-      steps {
-        sh 'mvn clean package'
-      }
-    }
-
-    stage('Deploy') {
-      steps {
-        deploy adapters: [tomcat9(
-          credentialsId: 'tomcat',
-          path: '',
-          url: 'http://localhost:8081/'
-        )],
-        contextPath: '/calculator',
-        war: 'target/calculator.war'
-      }
-    }
-  }
-}
-🎉 Final Result
-
-Build successful
-
-WAR generated successfully
-
-Deployment completed without errors
-
-Application accessible at:
-
-http://<server-ip>:8081/calculator
+Access:
+http://<EC2-IP>:8081/calculator
