@@ -20,9 +20,9 @@ pipeline {
       }
     }
 
-     stage('Package2') {
+     stage('Production') {
       steps{
-        sh 'mvn clean package2'
+        sh 'mvn clean production'
       }
     }
 
