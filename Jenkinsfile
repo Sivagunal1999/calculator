@@ -1,7 +1,7 @@
 pipeline {
     agent any
     stages {
-        stage('Checkout Develop') {
+        stage('Checkout develop') {
             steps {
                 // This fulfills the "pull to a folder" requirement
                 dir('develop-branch-code') {
