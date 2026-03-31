@@ -5,7 +5,7 @@ pipeline {
             steps {
                 // This fulfills the "pull to a folder" requirement
                 dir('develop-branch-code') {
-                    git branch: 'Develop', 
+                    git branch: 'develop', 
                         url: 'https://github.com/Sivagunal1999/calculator.git'
                 }
             }
